@@ -67,59 +67,64 @@ games = get_1000_matches(player_ids)
 def populate(request):
     json_request = json.loads(json.dumps(request.json()))
     game_info = json_normalize(json_request)
-    game_info.drop(['teams','participants','participantIdentities'],axis=1,inplace=True)
-    game_info = game_info.loc[game_info['gameMode'] == 'CLASSIC']
-    teams = json_normalize(json_request,record_path=['teams'],meta=['gameId'])
-    teams_bans = json_normalize(json_request['teams'],record_path=['bans'],meta=['teamId'])
-    r_teams_bans_f = pd.merge(teams,teams_bans,how='inner').drop('bans', axis=1)
-    
+	#For the game IDs with no data, the below code will return an empty dataset and a no data message
+    if game_info.columns[0] =='gameId': 
+        game_info.drop(['teams','participants','participantIdentities'],axis=1,inplace=True)
+        game_info = game_info.loc[game_info['gameMode'] == 'CLASSIC']
+        teams = json_normalize(json_request,record_path=['teams'],meta=['gameId'])
+        teams_bans = json_normalize(json_request['teams'],record_path=['bans'],meta=['teamId'])
+        r_teams_bans_f = pd.merge(teams,teams_bans,how='inner').drop('bans', axis=1)
 
-    r_prtcpts = json_normalize(json_request,record_path=['participants'],meta=['gameId'],max_level=0)
-    stats = json_normalize(r_prtcpts['stats'])
-    timeline = json_normalize(r_prtcpts['timeline'])
-    r_prtcpts = r_prtcpts.drop(columns=['stats', 'timeline'])
-    r_prtcpts = pd.merge(timeline, r_prtcpts, on='participantId')
-    r_prtcpts = pd.merge(stats, r_prtcpts,    on='participantId')
-    
-    r_prtcpts_id = json_normalize(json_request,record_path=['participantIdentities'],meta=['gameId'],max_level=0) (#Caution: max_level works only in pandas v0.25.1 and above)
-    player = json_normalize(r_prtcpts_id['player'])
-    r_prtcpts_id = r_prtcpts_id.drop(columns=['player'])
-    r_prtcpts = pd.concat([r_prtcpts, player], axis=1)
-    
-    match_final = pd.merge(pd.merge(pd.merge(game_info,r_teams_bans_f,on='gameId',how='inner'),r_prtcpts,
-                                left_on=['gameId','teamId','pickTurn'],right_on=['gameId','teamId','participantId'],how='inner'),
-                       r_prtcpts_id,on=['gameId','participantId'],how='inner')
-    match_final = match_final.drop(columns=['participantId',
-'longestTimeSpentLiving',
-'doubleKills',
-'tripleKills',
-'quadraKills',
-'pentaKills',
-'unrealKills',
-'perk0Var1',
-'perk0Var2',
-'perk0Var3',
-'perk1Var1',
-'perk1Var2',
-'perk1Var3',
-'perk2Var1',
-'perk2Var2',
-'perk2Var3',
-'perk3Var1',
-'perk3Var2',
-'perk3Var3',
-'perk4Var1',
-'perk4Var2',
-'perk4Var3',
-'perk5Var1',
-'perk5Var2',
-'perk5Var3',
-'participantId',
-'currentPlatformId',
-'currentAccountId',
-'profileIcon', 'seasonId', 'mapId'])
-    return match_final
 
+        r_prtcpts = json_normalize(json_request,record_path=['participants'],meta=['gameId'],max_level=0)
+        stats = json_normalize(r_prtcpts['stats'])
+        timeline = json_normalize(r_prtcpts['timeline'])
+        r_prtcpts = r_prtcpts.drop(columns=['stats', 'timeline'])
+        r_prtcpts = pd.merge(timeline, r_prtcpts, on='participantId')
+        r_prtcpts = pd.merge(stats, r_prtcpts,    on='participantId')
+
+        r_prtcpts_id = json_normalize(json_request,record_path=['participantIdentities'],meta=['gameId'],max_level=0)
+        player = json_normalize(r_prtcpts_id['player'])
+        r_prtcpts_id = r_prtcpts_id.drop(columns=['player'])
+        r_prtcpts = pd.concat([r_prtcpts, player], axis=1)
+
+        match_final = pd.merge(pd.merge(pd.merge(game_info,r_teams_bans_f,on='gameId',how='inner'),r_prtcpts,
+                                    left_on=['gameId','teamId','pickTurn'],right_on=['gameId','teamId','participantId'],how='inner'),
+                           r_prtcpts_id,on=['gameId','participantId'],how='inner')
+        match_final = match_final.drop(columns=['participantId',
+                                                'longestTimeSpentLiving',
+                                                'doubleKills',
+                                                'tripleKills',
+                                                'quadraKills',
+                                                'pentaKills',
+                                                'unrealKills',
+                                                'perk0Var1',
+                                                'perk0Var2',
+                                                'perk0Var3',
+                                                'perk1Var1',
+                                                'perk1Var2',
+                                                'perk1Var3',
+                                                'perk2Var1',
+                                                'perk2Var2',
+                                                'perk2Var3',
+                                                'perk3Var1',
+                                                'perk3Var2',
+                                                'perk3Var3',
+                                                'perk4Var1',
+                                                'perk4Var2',
+                                                'perk4Var3',
+                                                'perk5Var1',
+                                                'perk5Var2',
+                                                'perk5Var3',
+                                                'participantId',
+                                                'currentPlatformId',
+                                                'currentAccountId',
+                                                'profileIcon', 'seasonId', 'mapId'])
+        return match_final
+    else:
+        match_final = pd.DataFrame()
+        return match_final
+        return "There is no data for gameId " + str(game)
 
 
 # Note that one match ID can give us up to 1000 different matches
@@ -150,10 +155,21 @@ games_r2 = get_1000_matches(player_Ids2)
 print("The number of associated Game Ids corresponding to the " + str(len(player_Ids2)) + " account Ids is: " + str(len(games_r2)))
 # The number of associated Game Ids corresponding to the 5979 account Ids is: 458988
 
+#Fetching the games corresponding to the above matches
+i = 1
+for game in games_r2: #Use slicing if there are a lot of games (since the loop would take a lot of time to run) say games_r2[10000:20000]
+    
+    gameURL = 'https://na1.api.riotgames.com/lol/match/v4/matches/' + str(game)
+    new_request = requests.get(url = gameURL, params = params)
+    print("This is the output for match number "+str(game))
+    match_data = populate(new_request)
+    if match_data.empty == False:
+        data = pd.concat([match_data, data], axis=0, sort=False)
+    else:
+        print("There is no data for the gameID " + str(game))
+    if i%100 == 0:
+        time.sleep(60)
+#     time.sleep(0.5)
+    i+= 1
 
-
-
-
-
-
-
+print(data.shape,", ",data.gameId.nunique())
